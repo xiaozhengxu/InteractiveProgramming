@@ -4,7 +4,7 @@ import time
 from random import choice
 import numpy 
 
-player_speed = 4 #a value from 1 to 10
+player_speed = 5 #a value from 1 to 10
 # plank_speed = 5 #a value from 1 to 10
 
 
@@ -22,6 +22,22 @@ fontlarge = pygame.font.SysFont('UbuntuMono',100)
 fontmedium = pygame.font.SysFont('UbuntuMono',40)
 fonttiny = pygame.font.SysFont('UbuntuMono', 15)
 
+fast_plank = pygame.image.load('fast_plank.png')
+flip_plank = pygame.image.load('flip_plank.png')
+heart_plank = pygame.image.load('heart_plank.png')
+spike_plank = pygame.image.load('spike_plank.png')
+slow_plank = pygame.image.load('slow_plank.png')
+regular_plank = pygame.image.load('regular_plank.png')
+player_cupcake =pygame.image.load('cupcake.png')
+
+player_cupcake=pygame.transform.scale(player_cupcake,(140,180))
+regular_plank=pygame.transform.scale(regular_plank,(140,28))
+fast_plank=pygame.transform.scale(fast_plank,(140,28))
+slow_plank=pygame.transform.scale(slow_plank,(140,28))
+flip_plank=pygame.transform.scale(flip_plank,(140,28))
+heart_plank=pygame.transform.scale(heart_plank,(140,28))
+spike_plank=pygame.transform.scale(spike_plank,(140,32))
+
 class Plank(object):
     """ Represents a plank in our Fall game """
     def __init__(self, left, top, width, height, plank_type):
@@ -32,17 +48,18 @@ class Plank(object):
         self.plank_type = plank_type
         # self.color = choice(["red", "green", "orange", "blue", "purple"])
         if plank_type == "regular":    
-            self.color=pygame.Color(178,238,238) # a teal color 
+            self.image=regular_plank 
         elif plank_type == 'spike':
-            self.color=pygame.Color('red')
+            self.image=spike_plank
         elif plank_type == 'flip':
-            self.color = pygame.Color(0, 255, 0)
+            self.image=flip_plank
         elif plank_type == 'heart':
-            self.color = pygame.Color('purple')
+            self.image=heart_plank
         elif plank_type == 'fast':
-            self.color = pygame.Color('orange')
+            self.image=fast_plank
         elif plank_type == 'slow':
-            self.color = pygame.Color('yellow')
+            self.image=slow_plank
+
         self.rect = pygame.Rect(left, top, width, height)
 
     def movey(self):
@@ -56,6 +73,7 @@ class Player(object):
         self.speed = (10 - player_speed)/3.0 + 0.3
         self.dx=0
         self.dy=0
+        self.image=player_cupcake
 
     def movex(self, dx):
         '''Moves player side ways by an integer value of dx!
@@ -74,10 +92,11 @@ class Player(object):
 
 class FallModel(object):
     """ Stores the game state for our Fall game """
-    def __init__(self):
+    def __init__(self,start_time):
         self.controller = PyGameKeyboardController(self)
         self.time_on_flip=0 #time on a flip plank
-        self.time=0 #total time since game started
+        self.start_time=start_time
+        self.time=start_time
         self.make_plank_time=0 # times that new plank is made
         self.move_plank_time=0 #Times that planks are moved
         self.move_player_time=0
@@ -93,7 +112,7 @@ class FallModel(object):
 
         self.PLAYER_WIDTH = 30
         self.PLAYER_HEIGHT = 30
-
+        self.plank_types = ['fast','slow',"spike", "flip",'heart',"regular", "regular", "regular", "regular"]
         self.planks = []
         self.PLANK_WIDTH = 140
         self.PLANK_HEIGHT = 28
@@ -105,7 +124,7 @@ class FallModel(object):
         self.current_plank = first_plank
 
         self.life = 500
-        self.player = Player(480/2, 400 - self.PLAYER_HEIGHT, self.PLAYER_WIDTH, self.PLAYER_HEIGHT)
+        self.player = Player(480/2+30, 400 - self.PLAYER_HEIGHT-15, self.PLAYER_WIDTH, self.PLAYER_HEIGHT)
 
 
     def is_dead(self):
@@ -113,14 +132,13 @@ class FallModel(object):
 
     def make_planks(self):
     #Make new planks from the bottom 
-        # if make_new_p:
-        plank_types = ['fast','slow',"regular", "regular", "regular", "regular", "spike", "flip",'heart']
         new_plank_x=choice(range(20,480-20-self.PLANK_WIDTH))
-        new_plank=Plank(new_plank_x, 640, self.PLANK_WIDTH, self.PLANK_HEIGHT, choice(plank_types))
+        new_plank=Plank(new_plank_x, 640, self.PLANK_WIDTH, self.PLANK_HEIGHT, choice(self.plank_types))
         
         self.planks.append(new_plank)
 
     def move_planks(self):
+        '''move planks up and removes the ones that are outside the screen'''
         for p in self.planks:
             p.movey()
             if p.rect.bottom<0:
@@ -131,7 +149,7 @@ class FallModel(object):
             # if self.player.rect.colliderect(p):
             #Check if the player is on the plank (exactly)
             if self.player.rect.right>=p.rect.left and self.player.rect.left<=p.rect.right:
-                if self.player.rect.bottom<p.rect.top+3 and self.player.rect.bottom>=p.rect.top:
+                if self.player.rect.bottom<p.rect.top+3 and self.player.rect.bottom>=p.rect.top-15:
                     self.on_plank=True
                     self.current_plank = p
                     self.fall_time=0
@@ -142,16 +160,15 @@ class FallModel(object):
 
     def update(self):
         #check if player is on a plank and make it fall if otherwise
-        self.score=len(self.planks)
+        self.score=int(self.time/500)
 
-        # print self.move_plank_speed
-        #Continuously increase game speed 
+        #Continuously increase game speed
         if self.score<200:
             self.move_plank_speed=4-self.score*4.0/200
         elif self.score>=200:
             self.move_plank_speed=0
 
-        self.time=pygame.time.get_ticks()
+        self.time=pygame.time.get_ticks()-self.start_time
         move_plank=False
         self.on_plank=False
 
@@ -209,6 +226,7 @@ class FallModel(object):
         if self.time-self.make_plank_time>=time_interval:
             self.make_planks()
             self.make_plank_time=self.time
+
 class Wall(object):
     """ Represents the walls in our game """
     def __init__(self, left, top, width, height):
@@ -233,7 +251,6 @@ class PyGameKeyboardController(object):
         if keys[pygame.K_RIGHT]:
             self.model.player.dx=1
             
-
 class PyGameMouseController(object):
     def __init__(self, model):
         self.model = model
@@ -254,7 +271,7 @@ class PygameFallView(object):
 
     def draw(self):
         """ Draw the game state to the screen """
-        self.screen.fill(pygame.Color('black'))
+        self.screen.fill(pygame.Color('white'))
         # draw walls to screen
         tw=self.model.top_wall.rect
         lw=self.model.left_wall.rect
@@ -266,13 +283,12 @@ class PygameFallView(object):
 
         # draw the planks to the screen
         for plank in self.model.planks:
-            pygame.draw.rect(self.screen, plank.color, plank.rect)
+            self.screen.blit(plank.image, plank.rect)
 
         # draw the player to the screen
-        p = self.model.player.rect
-        # pos=(self.model.player.left, self.model.player.top)
-        # pygame.draw.circle(self.screen, pygame.Color('red'), pos, self.model.player.radius, width=0)
-        pygame.draw.rect(self.screen, pygame.Color('white'),p)
+        p = self.model.player
+        self.screen.blit(p.image,p.rect)
+
         # displays the life
         myfont = pygame.font.SysFont("monospace", 40) 
 
@@ -302,7 +318,6 @@ class PygameFallView(object):
         if keys[pygame.K_3]: #double player mode
             return '3'
         self.screen.fill(white)
-
         self.display_text("FALL", fontlarge, pygame.Color(178,238,238), 100, 120)
         self.display_text("1. Solo", fontmedium, black, self.text_start, 270)
         self.display_text("2. Controls", fontmedium, black, self.text_start, 310)
@@ -359,11 +374,9 @@ if __name__ == '__main__':
     pygame.init()
     size = (480, 640)
     screen = pygame.display.set_mode(size)
-    
-    import spritesheet_functions
+    model=FallModel(pygame.time.get_ticks())
+    view=PygameFallView(model,screen)
     scores=[]
-    model=FallModel()
-    view = PygameFallView(model, screen)
     #controller = PyGameMouseController(model)
     running = True
     res='0'
@@ -387,8 +400,9 @@ if __name__ == '__main__':
             running=False 
         elif res=='4':
             res=view.score()
-            model=FallModel()
+            model=FallModel(pygame.time.get_ticks())
             view=PygameFallView(model,screen)
+            
 
 
 
